@@ -106,15 +106,15 @@ namespace Atlas_WebAPI_V02.Models
             Pen pen = new Pen(brush, LineWidth);
             pen.DashStyle = ds;  //边界样式
 
+            //获取目标区域信息 并 标记高低温点 (画小三角)
+            GetTargetResult(thermal, rect_list, g);
+
             for (int i = 0; i < rect_list.Count; i++)
             {
                 g.DrawRectangle(pen, rect_list[i]); //画框
-                //if(rect_list.Count > 1)
-                    GetPieWithDigit(g, rect_list[i], i);  //画框序号
+                                                    
+                DrawStringMsg(g, rect_list[i].Location, i, result_Rect_Info_lsit[i]);  //画框序号 和 图片左上角信息
             }
-
-            //获取目标区域信息 并 标记高低温点
-            GetTargetResult(thermal, rect_list, g);
 
             brush.Dispose();
             pen.Dispose();
@@ -181,7 +181,7 @@ namespace Atlas_WebAPI_V02.Models
                 //结果数值列表
                 templist.Add(new Result_pic_info(value.rect_max, value.rect_min, value.rect_avg, pt_max, pt_min));
             }
-            result_Rect_Info_lsit = templist;
+            this.result_Rect_Info_lsit = templist;
         }
 
         /// <summary>
@@ -190,18 +190,45 @@ namespace Atlas_WebAPI_V02.Models
         /// <param name="g"></param>
         /// <param name="rectangle"></param>
         /// <param name="digit"></param>
-        public void GetPieWithDigit(Graphics g, Rectangle rectangle, int digit)
+        public void DrawStringMsg(Graphics g, Point pstart, int serial, Result_pic_info info)
+        {
+            Color font_color = Color.White;//字体颜色
+            StringFormat stringFormat = new StringFormat();//文字格式
+            stringFormat.Alignment = StringAlignment.Near;//居中对齐
+
+            //框左边的序号标识
+            int width = 30;
+            int height = 15;
+            Rectangle rect = new Rectangle(pstart.X - width, pstart.Y , width, height);
+            g.DrawString("Bx"+serial.ToString(), new Font("微软雅黑", 9), new SolidBrush(font_color), rect, stringFormat);//框序号
+
+            //图片左上角信息
+            int info_width = 135;
+            int info_height = 50;
+            string line0 = "max  " + info.max.ToString() + " ℃\r\n";
+            string line1 = "         min   " + info.min.ToString() + " ℃\r\n";
+            string line2 = "         avg   " + info.avg.ToString() + " ℃\r\n";
+            string msg = String.Format("Bx{0}:  {1}{2}{3}", serial, line0, line1, line2);
+
+            Rectangle info_rect = new Rectangle(5, 5 + (info_height+5) * serial, info_width, info_height);
+            g.DrawString(msg, new Font("微软雅黑", 9), new SolidBrush(font_color), info_rect, stringFormat);//目标矩形内的温度信息
+          
+            //g.DrawRectangle(new Pen(Color.White), info_rect);//矩形
+            // Color circle_color = Color.FromArgb(192, 192, 192);//圈 颜色
+            // g.DrawEllipse(new Pen(circle_color), rect); //空心圈
+        }
+
+        public void DrawStringMsg(Graphics g, Rectangle rectangle, string msg)
         {
             int size = 13;
-            Color circle_color = Color.FromArgb(192, 192, 192);//圈 颜色
             Color font_color = Color.White;//字体颜色
-            
-            Rectangle rect = new Rectangle(rectangle.Location.X - size , rectangle.Location.Y, size , size );
-            StringFormat stringFormat = new StringFormat();
-            stringFormat.Alignment = StringAlignment.Center;
 
-            g.DrawString(digit.ToString(), new Font("微软雅黑", 7), new SolidBrush(font_color), rect, stringFormat);//数字
-            g.DrawEllipse(new Pen(circle_color), rect); //空心圈
+            Rectangle msg_rect = new Rectangle(rectangle.Location.X - size, rectangle.Location.Y, size, size);
+            StringFormat stringFormat = new StringFormat();
+            stringFormat.Alignment = StringAlignment.Center;//居中显示
+
+            g.DrawString(msg, new Font("微软雅黑", 7), new SolidBrush(font_color), msg_rect, stringFormat);  //message
+          
         }
 
         /// <summary>

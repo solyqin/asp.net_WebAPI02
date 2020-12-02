@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Atlas_WebAPI_V02.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/[controller]/[action]")]
     [ApiController]
     public class ValuesController : ControllerBase
     {
@@ -128,16 +128,16 @@ namespace Atlas_WebAPI_V02.Controllers
             return fs;
         }
 
-        //[HttpGet]
-        ////获取可见光文件
-        //public Object GetVisualFile(string filename)  
-        //{
-        //    string path = Path.Combine(FileManage.GetSaveFolderPath(), filename);//文件结果路径;
-        //    if (!System.IO.File.Exists(path))
-        //    {
-        //        return path + ":文件不存在!";
-        //    }
-        //    return Analysis_Image.GetOnlyMode(path);
-        //}
+        [HttpGet]
+        //获取可见光文件
+        public Object GetVisualFile(string filename)
+        {
+            string path = Path.Combine(FileManage.GetSaveFolderPath(), filename);//文件结果路径;
+            if (!System.IO.File.Exists(path))
+            {
+                return path + ":文件不存在!";
+            }
+            return Analysis_Image.GetOnlyMode(path);
+        }
     }
 }
