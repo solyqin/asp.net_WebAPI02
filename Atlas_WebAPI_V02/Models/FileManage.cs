@@ -42,6 +42,7 @@ namespace Atlas_WebAPI_V02.Models
         /// <returns></returns>
         public static string GetResultFolderPath()
         {
+            DateTime.Now.AddDays(1 - DateTime.Now.Day).Date.AddMonths(1).AddSeconds(-1);
             string path = AppDomain.CurrentDomain.BaseDirectory + "result";
             if (System.IO.Directory.Exists(path) == false)//如果不存在就创建file文件夹
             {

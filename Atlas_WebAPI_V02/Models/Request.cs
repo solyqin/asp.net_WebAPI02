@@ -27,9 +27,13 @@ namespace Atlas_WebAPI_V02.Models
     {
         public int tartRectCount { get; set; }
         public string img_file_path { get; set; }
+        private List<Rectangle> targ_Rect_list { get; set; }
 
-        private List<Rectangle> targ_Rect_list = new List<Rectangle>();
-
+        public Request_param()
+        {
+            targ_Rect_list = new List<Rectangle>();
+        }
+         
         public void GetParam(HttpContext context)
         {
             tartRectCount = ToInt(context.Request.Form["count"]); //

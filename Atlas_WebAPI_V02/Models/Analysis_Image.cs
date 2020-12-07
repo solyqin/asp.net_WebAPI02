@@ -1,4 +1,5 @@
 ﻿using Flir.Atlas.Image;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -9,7 +10,6 @@ using System.Web;
 
 namespace Atlas_WebAPI_V02.Models
 {
-   
     public struct Result_pic_info  //区域解析结果
     {
         public double max;
@@ -68,6 +68,8 @@ namespace Atlas_WebAPI_V02.Models
             }
             catch(Exception ex)
             {
+                if (System.IO.File.Exists(file_path)) //删除非红外图片
+                    System.IO.File.Delete(file_path);
                 throw new MyException("解析对象不是红外图片！"+ex.Message.ToString());
             }
         }
@@ -281,13 +283,40 @@ namespace Atlas_WebAPI_V02.Models
 
         public static System.IO.Stream GetOnlyMode(string path)
         {
-            ThermalImageFile th = new ThermalImageFile(path);
-            th.Fusion.Mode = th.Fusion.VisualOnly;
+            using (ThermalImageFile th = new ThermalImageFile(path))
+            {
+                th.Fusion.Mode = th.Fusion.VisualOnly; //可见光模式
+                ImageConverter imgconv = new ImageConverter();
+                byte[] bytes = (byte[])imgconv.ConvertTo(th.Image, typeof(byte[]));
+                System.IO.Stream stream = new System.IO.MemoryStream(bytes);
+                return stream;
+            }
+        }
+      
+        public static string DetailInfoFromPic(string filepath)
+        {
+            using (ThermalImageFile th = new ThermalImageFile(filepath))
+            {
+                ImageParameters imageParameters = th.ThermalParameters;
+                CameraInformation camera = th.CameraInformation;//大气温度
 
-            ImageConverter imgconv = new ImageConverter();
-            byte[] bytes = (byte[])imgconv.ConvertTo(th.Image, typeof(byte[]));
-            System.IO.Stream stream = new System.IO.MemoryStream(bytes);
-            return stream;
+                DetailInfo detailInfo = new DetailInfo();
+                //文件信息
+                detailInfo.Title = th.Title;
+                detailInfo.Width = th.Size.Width.ToString();
+                detailInfo.Height = th.Size.Height.ToString();
+                detailInfo.DateTaken = th.DateTaken.ToString();//拍摄日期
+                //图像目标参数
+                detailInfo.AtmosphericTemperature = Math.Round(imageParameters.AtmosphericTemperature, 2).ToString();//大气温度
+                //相机信息                                                                                                     //相机信息
+                detailInfo.Lens = camera.Lens; //相机镜头信息
+                detailInfo.Model = camera.Model; //相机模型信息
+                detailInfo.Range_max = Math.Round(camera.Range.Maximum, 2).ToString();  //测量范围
+                detailInfo.Range_min = Math.Round(camera.Range.Minimum, 2).ToString();   //测量范围
+                detailInfo.SerialNumber = camera.SerialNumber; //相机的序列号
+                string json = JsonConvert.SerializeObject(detailInfo);
+                return json;
+            }
         }
     }
 }

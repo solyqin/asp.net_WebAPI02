@@ -115,27 +115,41 @@ namespace Atlas_WebAPI_V02.Controllers
             String value = request["filename"];
 
             if (value == null)
-                return "获取参数值为空！";
+                return "请确认参数名完整正确！";
 
             string path = Path.Combine(FileManage.GetResultFolderPath(), filename);//文件结果路径;
             if (!System.IO.File.Exists(path))
             {
-                return path + ":文件不存在!";
+                return filename + ":文件不存在!";
             }
-
             FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read);
-
             return fs;
+        }
+
+        //获取图片详细信息
+        [HttpGet]
+        public Object GetDetailInfo(string filename)
+        {
+            if (filename == null)
+                return "请确认参数名完整正确！";
+            string path = Path.Combine(FileManage.GetSaveFolderPath(), filename);//文件结果路径;
+            if (!System.IO.File.Exists(path))
+            {
+                return filename + ":文件不存在!";
+            }
+            return Analysis_Image.DetailInfoFromPic(path);
         }
 
         [HttpGet]
         //获取可见光文件
         public Object GetVisualFile(string filename)
         {
+            if (filename == null)
+                return "请确认参数名完整正确！";
             string path = Path.Combine(FileManage.GetSaveFolderPath(), filename);//文件结果路径;
             if (!System.IO.File.Exists(path))
             {
-                return path + ":文件不存在!";
+                return filename + ":文件不存在!";
             }
             return Analysis_Image.GetOnlyMode(path);
         }

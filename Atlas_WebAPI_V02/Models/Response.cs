@@ -44,7 +44,8 @@ namespace Atlas_WebAPI_V02.Models
     {
         public int code { get; set; }
         public string message { get; set; }
-        public ResultCollection resultCollection { get; set; }
+        //public ResultCollection resultCollection { get; set; }
+        public Object resultCollection { get; set; }
 
         public  ResultBody(int def_code = 200,string def_message = "已接收请求并处理图片！")
         {
@@ -57,5 +58,27 @@ namespace Atlas_WebAPI_V02.Models
             this.code = code;
             this.message = msg;
         }
+
+        public void NotFound()
+        {
+            this.code = 404; 
+            this.message = "访问资源不存在！";
+            this.resultCollection = null;
+        }
+    }
+
+    class DetailInfo
+    {
+        public string Title { set; get; }
+        public string Width { set; get; }
+        public string Height { set; get; }
+        public string DateTaken { set; get; }
+        public string AtmosphericTemperature { set; get; }
+        public string Lens { set; get; }
+        public string Model { set; get; }
+        public string Range_max { set; get; }
+        public string Range_min { set; get; }
+        public string SerialNumber { set; get; }
+      
     }
 }
