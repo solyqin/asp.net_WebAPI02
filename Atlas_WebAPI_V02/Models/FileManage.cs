@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Atlas_WebAPI_V02.Helper;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Web;
 
@@ -8,6 +10,49 @@ namespace Atlas_WebAPI_V02.Models
     
     public class FileManage
     {
+        private readonly static int SaveFileTimeOUT = 19;  //默认文件保留19分钟
+        private readonly static string ResultPath = AppDomain.CurrentDomain.BaseDirectory + "result";
+        private readonly static string RecvPath = AppDomain.CurrentDomain.BaseDirectory + "recv";
+        public static object Configuration { get; private set; }
+
+        //删除过期文件
+        public static void DeleteExpiredFiles()
+        {
+            DelectDir(RecvPath);
+            DelectDir(ResultPath);
+        }
+
+        public static void DelectDir(string path)
+        {
+            if (!Directory.Exists(path))
+                return;
+            try
+            {
+                DirectoryInfo dir = new DirectoryInfo(path);
+                FileSystemInfo[] fileinfo = dir.GetFileSystemInfos();  //返回目录中所有文件和子目录
+                foreach (FileSystemInfo item in fileinfo)
+                {
+                    if (DateTime.Compare(item.LastAccessTime.AddMinutes(SaveFileTimeOUT), DateTime.Now) > 0)
+                    {
+                        if (item is DirectoryInfo)            //判断是否文件夹
+                        {
+                            DirectoryInfo subdir = new DirectoryInfo(item.FullName);
+                            subdir.Delete(true);          //删除子目录和文件
+                        }
+                        else
+                        {
+                            File.Delete(item.FullName);      //删除指定文件
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+
+
         /// <summary>
         /// 生成唯一文件名
         /// </summary>
@@ -28,12 +73,11 @@ namespace Atlas_WebAPI_V02.Models
         /// <returns></returns>
         public static string GetSaveFolderPath()
         {
-            string path = AppDomain.CurrentDomain.BaseDirectory + "recv";
-            if (System.IO.Directory.Exists(path) == false)//如果不存在就创建file文件夹
+            if (System.IO.Directory.Exists(RecvPath) == false)//如果不存在就创建file文件夹
             {
-                System.IO.Directory.CreateDirectory(path);
+                System.IO.Directory.CreateDirectory(RecvPath);
             }
-            return path;
+            return RecvPath;
         }
 
         /// <summary>
@@ -42,14 +86,11 @@ namespace Atlas_WebAPI_V02.Models
         /// <returns></returns>
         public static string GetResultFolderPath()
         {
-            DateTime.Now.AddDays(1 - DateTime.Now.Day).Date.AddMonths(1).AddSeconds(-1);
-            string path = AppDomain.CurrentDomain.BaseDirectory + "result";
-            if (System.IO.Directory.Exists(path) == false)//如果不存在就创建file文件夹
+            if (System.IO.Directory.Exists(ResultPath) == false)//如果不存在就创建file文件夹
             {
-                System.IO.Directory.CreateDirectory(path);
+                System.IO.Directory.CreateDirectory(ResultPath);
             }
-            return path;
+            return ResultPath;
         }
-
     }
 }

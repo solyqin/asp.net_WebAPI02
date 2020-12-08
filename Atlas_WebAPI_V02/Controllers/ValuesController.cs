@@ -133,9 +133,10 @@ namespace Atlas_WebAPI_V02.Controllers
             if (filename == null)
                 return "请确认参数名完整正确！";
             string path = Path.Combine(FileManage.GetSaveFolderPath(), filename);//文件结果路径;
+            
             if (!System.IO.File.Exists(path))
             {
-                return filename + ":文件不存在!";
+                return path + ":文件不存在!";
             }
             return Analysis_Image.DetailInfoFromPic(path);
         }

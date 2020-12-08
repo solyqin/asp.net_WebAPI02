@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static Atlas_WebAPI_V02.JobTrigger.Trigger;
 
 namespace Atlas_WebAPI_V02
 {
@@ -37,9 +38,13 @@ namespace Atlas_WebAPI_V02
 
             //log注入ILoggerHelper
             services.AddSingleton<ILoggerHelper, LoggerHelper>();
-            //log4net
+            //log4net 日志
             repository = LogManager.CreateRepository("Atlas_WebAPI_V01");//项目名称
-            XmlConfigurator.Configure(repository, new System.IO.FileInfo("log4net.config"));//指定配置文件，
+            XmlConfigurator.Configure(repository, new System.IO.FileInfo("log4net.config"));//指定配置文件
+
+           
+            //定时服务
+            services.AddHostedService<TestJobTrigger>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
