@@ -1,4 +1,5 @@
-﻿using Flir.Atlas.Image;
+﻿using Atlas_WebAPI_V02.Report;
+using Flir.Atlas.Image;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -12,6 +13,7 @@ namespace Atlas_WebAPI_V02.Models
 {
     public struct Result_pic_info  //区域解析结果
     {
+        public int rect_id;
         public double max;
         public double min;
         public double avg;
@@ -19,13 +21,18 @@ namespace Atlas_WebAPI_V02.Models
         public Point pt_max;
         public Point pt_min;
 
-        public Result_pic_info(double max,double min,double avg,Point pt_max,Point pt_min)
+        public Rectangle target_rect;
+
+        public Result_pic_info(double max,double min,double avg,Point pt_max,Point pt_min,int id, Rectangle rect)
         {
             this.max = max;
             this.min = min;
             this.avg = avg;
             this.pt_max = pt_max;
             this.pt_min = pt_min;
+            this.rect_id = id;
+            this.target_rect = rect;
+            
         }
     }
 
@@ -42,6 +49,8 @@ namespace Atlas_WebAPI_V02.Models
         public List<Result_pic_info> Result_Rect_Info_lsit { get { return this.result_Rect_Info_lsit; } }
         private string result_file_name { set; get; }
         public string Result_file_name {  get { return this.result_file_name; } }
+        private string picBaseInfo { set; get; }
+        public string PicBaseInfo { get { return this.picBaseInfo; } }
 
         /// <summary>
         /// 解析路径下的红外图片，获取相关信息
@@ -49,21 +58,22 @@ namespace Atlas_WebAPI_V02.Models
         /// <param name="file_path">文件路径</param>
         /// <param name="pic_info">识别区域信息</param>
         /// <returns></returns>
-        public void OpenPic(string file_path, List<Rectangle> pic_info_list)
+        public  void OpenPicAsync(string file_path, List<Rect_param> pic_param_list)
         {
             try
             {
                 using (ThermalImageFile th = new ThermalImageFile(file_path))   //打开热成像图片文件  
                 {
                     //拼接结果文件路径
-                    string path = System.IO.Path.Combine(FileManage.GetResultFolderPath() , th.Title);
-
+                    string savepath = System.IO.Path.Combine(FileManage.GetResultFolderPath() , th.Title);
+                   
                     //处理图片，获取结果信息
-                    using (Bitmap saveimage = DrawRectangleInPicture(th, pic_info_list, Color.Red, 2, DashStyle.Solid))
+                    using (Bitmap saveimage = DrawRectangleInPicture(th, pic_param_list, Color.Red, 2, DashStyle.Solid))
                     {
-                        saveimage.Save(path); //保存结果图片
-                        this.result_file_name = System.IO.Path.GetFileName(path); // 保存结果文件路径
+                        saveimage.Save(savepath); //保存结果图片
+                        this.result_file_name = System.IO.Path.GetFileName(savepath); // 保存结果文件路径
                     }
+                    this.picBaseInfo = JsonConvert.SerializeObject(DetailInfo(th)); 
                 }
             }
             catch(Exception ex)
@@ -95,7 +105,7 @@ namespace Atlas_WebAPI_V02.Models
         // /// <param name="HotSpot">最高温度点</param>
         // /// <param name="ColdSpot">最低温度点</param>
         /// <returns>Bitmap 画上矩形和标记出最高、低温度点的图</returns>
-        public Bitmap DrawRectangleInPicture(ThermalImageFile thermal, List<Rectangle> rect_list, Color RectColor, int LineWidth, DashStyle ds)
+        public Bitmap DrawRectangleInPicture(ThermalImageFile thermal, List<Rect_param> param_list, Color RectColor, int LineWidth, DashStyle ds)
         {
             if (thermal == null) return null;
 
@@ -109,13 +119,13 @@ namespace Atlas_WebAPI_V02.Models
             pen.DashStyle = ds;  //边界样式
 
             //获取目标区域信息 并 标记高低温点 (画小三角)
-            GetTargetResult(thermal, rect_list, g);
-
-            for (int i = 0; i < rect_list.Count; i++)
+            GetTargetResult(thermal, param_list, g);
+            
+            foreach (var item in this.result_Rect_Info_lsit)
             {
-                g.DrawRectangle(pen, rect_list[i]); //画框
-                                                    
-                DrawStringMsg(g, rect_list[i].Location, i, result_Rect_Info_lsit[i]);  //画框序号 和 图片左上角信息
+                g.DrawRectangle(pen, item.target_rect); //画框
+
+                DrawStringMsg(g,item);  //画框序号 和 图片左上角信息
             }
 
             brush.Dispose();
@@ -166,14 +176,15 @@ namespace Atlas_WebAPI_V02.Models
         /// </summary>
         /// <param name="th">红外图片对象</param>
         /// <param name="rect">指定矩形</param>
-        public void GetTargetResult(ThermalImageFile th, List<Rectangle> rect_list, Graphics g)
+        public void GetTargetResult(ThermalImageFile th, List<Rect_param> param_list, Graphics g)
         {
             List<Result_pic_info> templist = new List<Result_pic_info>();
-            foreach (var rect in rect_list)
+            foreach (var rect in param_list)
             {
-                double[] tempertureRect = th.GetValues(rect); //Math.Round(d, 2).ToString()
-                Point pt_max = GetMaxPointInRectangle(tempertureRect, rect);//获取高温点坐标
-                Point pt_min = GetMinPointInRectangle(tempertureRect, rect);//获取高温点坐标
+                Rectangle target_rect = new Rectangle(rect.x, rect.y, rect.width, rect.height);
+                double[] tempertureRect = th.GetValues(target_rect); //Math.Round(d, 2).ToString()
+                Point pt_max = GetMaxPointInRectangle(tempertureRect, target_rect);//获取高温点坐标
+                Point pt_min = GetMinPointInRectangle(tempertureRect, target_rect);//获取高温点坐标
                 var value = GetMaxMinInRectangle(tempertureRect);
 
                 //标记点
@@ -181,7 +192,7 @@ namespace Atlas_WebAPI_V02.Models
                 FillTriangle_1(g, pt_min, Dire.DOWN);
 
                 //结果数值列表
-                templist.Add(new Result_pic_info(value.rect_max, value.rect_min, value.rect_avg, pt_max, pt_min));
+                templist.Add(new Result_pic_info(value.rect_max, value.rect_min, value.rect_avg, pt_max, pt_min, rect.id,target_rect));
             }
             this.result_Rect_Info_lsit = templist;
         }
@@ -192,7 +203,7 @@ namespace Atlas_WebAPI_V02.Models
         /// <param name="g"></param>
         /// <param name="rectangle"></param>
         /// <param name="digit"></param>
-        public void DrawStringMsg(Graphics g, Point pstart, int serial, Result_pic_info info)
+        public void DrawStringMsg(Graphics g, Result_pic_info info)
         {
             Color font_color = Color.White;//字体颜色
             StringFormat stringFormat = new StringFormat();//文字格式
@@ -201,8 +212,8 @@ namespace Atlas_WebAPI_V02.Models
             //框左边的序号标识
             int width = 30;
             int height = 15;
-            Rectangle rect = new Rectangle(pstart.X - width, pstart.Y , width, height);
-            g.DrawString("Bx"+serial.ToString(), new Font("微软雅黑", 9), new SolidBrush(font_color), rect, stringFormat);//框序号
+            Rectangle rect = new Rectangle(info.target_rect.Location.X - width, info.target_rect.Location.Y , width, height);
+            g.DrawString("Bx"+ info.rect_id.ToString(), new Font("微软雅黑", 9), new SolidBrush(font_color), rect, stringFormat);//框序号
 
             //图片左上角信息
             int info_width = 135;
@@ -210,9 +221,9 @@ namespace Atlas_WebAPI_V02.Models
             string line0 = "max  " + info.max.ToString() + " ℃\r\n";
             string line1 = "         min   " + info.min.ToString() + " ℃\r\n";
             string line2 = "         avg   " + info.avg.ToString() + " ℃\r\n";
-            string msg = String.Format("Bx{0}:  {1}{2}{3}", serial, line0, line1, line2);
+            string msg = String.Format("Bx{0}:  {1}{2}{3}", info.rect_id, line0, line1, line2);
 
-            Rectangle info_rect = new Rectangle(5, 5 + (info_height+5) * serial, info_width, info_height);
+            Rectangle info_rect = new Rectangle(5, 5 + (info_height+5) * info.rect_id - 1, info_width, info_height); //设计框ID从1开始
             g.DrawString(msg, new Font("微软雅黑", 9), new SolidBrush(font_color), info_rect, stringFormat);//目标矩形内的温度信息
           
             //g.DrawRectangle(new Pen(Color.White), info_rect);//矩形
@@ -297,26 +308,40 @@ namespace Atlas_WebAPI_V02.Models
         {
             using (ThermalImageFile th = new ThermalImageFile(filepath))
             {
-                ImageParameters imageParameters = th.ThermalParameters;
-                CameraInformation camera = th.CameraInformation;//大气温度
-
-                DetailInfo detailInfo = new DetailInfo();
-                //文件信息
-                detailInfo.Title = th.Title;
-                detailInfo.Width = th.Size.Width.ToString();
-                detailInfo.Height = th.Size.Height.ToString();
-                detailInfo.DateTaken = th.DateTaken.ToString();//拍摄日期
-                //图像目标参数
-                detailInfo.AtmosphericTemperature = Math.Round(imageParameters.AtmosphericTemperature, 2).ToString();//大气温度
-                //相机信息                                                                                                     //相机信息
-                detailInfo.Lens = camera.Lens; //相机镜头信息
-                detailInfo.Model = camera.Model; //相机模型信息
-                detailInfo.Range_max = Math.Round(camera.Range.Maximum, 2).ToString();  //测量范围
-                detailInfo.Range_min = Math.Round(camera.Range.Minimum, 2).ToString();   //测量范围
-                detailInfo.SerialNumber = camera.SerialNumber; //相机的序列号
-                string json = JsonConvert.SerializeObject(detailInfo);
+                string json = JsonConvert.SerializeObject(DetailInfo(th));
                 return json;
             }
+        }
+
+        public static DetailInfo DetailInfo(ThermalImageFile th)
+        {
+            ImageParameters imageParameters = th.ThermalParameters;
+            CameraInformation camera = th.CameraInformation;
+
+            DetailInfo detailInfo = new DetailInfo();
+            //文件信息
+            detailInfo.Title = th.Title; //图片名
+            detailInfo.Width = th.Size.Width;
+            detailInfo.Height = th.Size.Height;
+            detailInfo.Max = th.Statistics.Max.Value; //全图最高温
+            detailInfo.Min = th.Statistics.Min.Value; //全图最低温
+            detailInfo.DateTaken = th.DateTaken.ToString();//拍摄日期
+            //图像目标参数
+            detailInfo.AtmosphericTemperature = Math.Round(imageParameters.AtmosphericTemperature, 2).ToString();//大气温度
+            //相机信息                                                                                                     
+            detailInfo.Lens = camera.Lens; //相机镜头信息
+            detailInfo.Model = camera.Model; //相机模型信息
+            detailInfo.Range_max = Math.Round(camera.Range.Maximum, 2).ToString();  //测量范围
+            detailInfo.Range_min = Math.Round(camera.Range.Minimum, 2).ToString();   //测量范围
+            detailInfo.SerialNumber = camera.SerialNumber; //相机的序列号
+            //图像目标参数
+            detailInfo.DistanceUnit = th.DistanceUnit.ToString(); //距离单位
+            detailInfo.Distance = imageParameters.Distance; //到被聚焦对象的距离
+            detailInfo.Emissivity = imageParameters.Emissivity; //红外图像的默认发射率
+            detailInfo.RelativeHumidity = imageParameters.RelativeHumidity; //相对湿度(0.0 - 1.0)
+            detailInfo.ReflectedTemperature = imageParameters.ReflectedTemperature; //反射温度
+
+            return detailInfo;
         }
     }
 }

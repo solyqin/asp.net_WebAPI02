@@ -5,71 +5,69 @@ using System.IO;
 using System.Linq;
 //using System.Web;
 using Microsoft.AspNetCore.Http;
-
+using Newtonsoft.Json;
 
 namespace Atlas_WebAPI_V02.Models
 {
-    public struct Target_info  //目标区域信息
+    public struct Rect_param
     {
-        public int start_X;
-        public int start_Y;
-        public int Width;
-        public int Heigth;
-        public Target_info(int x,int y,int w,int h)
+        public int x;
+        public int y;
+        public int width;
+        public int height;
+        public int id;
+        public IEnumerator<double> GetEnumerator()
         {
-            start_X = x;
-            start_Y = y;
-            Width = w;
-            Heigth = h;
-         }
+            return MyIE();
+        }
+
+        public IEnumerator<double> MyIE()
+        {
+            yield return x;
+            yield return y;
+            yield return width;
+            yield return height;
+            yield return id;
+        }
     }
+    
     public class Request_param
     {
-        public int tartRectCount { get; set; }
         public string img_file_path { get; set; }
-        private List<Rectangle> targ_Rect_list { get; set; }
+        private List<Rect_param> rect_Params { get; set; } 
 
-        public Request_param()
-        {
-            targ_Rect_list = new List<Rectangle>();
-        }
-         
         public void GetParam(HttpContext context)
         {
-            tartRectCount = ToInt(context.Request.Form["count"]); //
-            if (tartRectCount == 0 )
-                throw new MyException("缺少目标区域数量参数！");
+            string error_param = "";
+            IFormFileCollection filelist = context.Request.Form.Files; //上传文件
+            string param = context.Request.Form["rect_param"];
+            int count = ToInt(context.Request.Form["count"]); //
 
-            for (int i = 0; i < tartRectCount; i++)
+            List<Rect_param> list_rect = JsonConvert.DeserializeObject<List<Rect_param>>(param);
+
+            //参数校验
+            if (count == 0 )
+                throw new MyException("缺少目标区域数量参数！");
+           
+            foreach (Rect_param item in list_rect)
             {
-                targ_Rect_list.Add(new Rectangle(
-                   ToInt(context.Request.Form["startx_" + i]),
-                   ToInt(context.Request.Form["starty_" + i]),
-                   ToInt(context.Request.Form["width_" + i]),
-                   ToInt(context.Request.Form["height_" + i])));
+                int index = list_rect.IndexOf(item); //当前循环的索引
+                
+                error_param += item.id == 0 ? $"[{index}]id" :"";   //默认目标框的ID 不能为0，避免验证冲突
+                error_param += item.x == 0 ? $"[{index}]x": "";
+                error_param += item.y == 0 ? $"[{index}]y" : "";
+                error_param += item.width == 0 ? $"[{index}]width" : "";
+                error_param += item.height == 0 ? $"[{index}]height" : "";
             }
 
-            IFormFileCollection filelist = context.Request.Form.Files; //上传文件
             try
             {
-                string error_param = "";
-                for (int i = 0; i < targ_Rect_list.Count; i++)
-                {
-                    Rectangle rect = targ_Rect_list[i];
-                    if (rect.X == 0 || rect.Y == 0 || rect.Width == 0 || rect.Height == 0)
-                    {
-                        error_param += rect.X == 0 ? "startx_" + i.ToString() : "_" + ",";
-                        error_param += rect.Y == 0 ? "starty_" + i.ToString() : "_" + ",";
-                        error_param += rect.Width == 0 ? "width_"  + i.ToString() : "_" + ",";
-                        error_param += rect.Height == 0 ? "height_" + i.ToString() : "_";
-                    }
-                }
-
                 if (!string.IsNullOrEmpty(error_param))
                     throw new MyException("必要参数:[" + error_param + "] 为空值！ ");
                 if (filelist == null || filelist.Count <= 0)
                     throw new MyException("缺少上传文件！");
 
+                this.rect_Params = list_rect;
                 this.img_file_path = SaveImageFile(filelist);
             }
             catch (Exception ex)
@@ -78,9 +76,9 @@ namespace Atlas_WebAPI_V02.Models
             }
         }
 
-        public List<Rectangle> GetPicInfoList()
+        public List<Rect_param> GetPicInfoList()
         {
-            return this.targ_Rect_list;
+            return this.rect_Params;
         }
 
         public string SaveImageFile(IFormFileCollection filelist)
@@ -121,5 +119,30 @@ namespace Atlas_WebAPI_V02.Models
             return result;
         }
 
+        public static string[] SaveFile(IFormFileCollection filelist)
+        {
+            string[] filenames = new string[filelist.Count];
+            for (int i = 0; i < filelist.Count; i++)
+            {
+                try
+                {
+                    IFormFile file = filelist[i];//默认值上传一张图片；获取第一个文件
+                    string filename = FileManage.GenerateFileName(file.FileName); //上传文件名(唯一)
+                    string recv_Path = Path.Combine(FileManage.GetSaveFolderPath(), filename); //保存路径+文件名
+
+                    using (FileStream fs = new FileStream(recv_Path, FileMode.Create, FileAccess.Write))
+                    {
+                        file.CopyTo(fs);
+                    }
+                    filenames[i] = recv_Path;
+                }
+                catch (Exception)
+                {
+                    filenames[i] = string.Empty;
+                    throw new MyException("上传文件写入异常! ");
+                }
+            }
+            return filenames;
+        }
     }
 }

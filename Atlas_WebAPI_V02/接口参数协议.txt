@@ -1,0 +1,87 @@
+//获取解析红外图片目标区域的数据
+http://150.158.7.244:8080/api/values/AnalysisResult    (公网）
+参数：
+	rect_param:
+			[
+				{
+					(int)id：矩形框ID (默认ID值不为0，0用于服务器校验)
+					(int)x : 矩形原点坐标X
+					(int)y ：矩形原点坐标Y
+					(int)width ：矩形宽
+					(int)height：矩形高
+			   },
+			   {
+					id：矩形框ID
+					x : 矩形原点坐标X
+					y ：矩形原点坐标Y
+					width ：矩形宽
+					height：矩形高
+			   },
+			  
+			]
+   file     ：图片文件
+   
+返回：
+   code：(int)处理状态码
+   message：(string)提示信息
+   resultCollection：      //结果集合
+   {
+	opints_result： //特殊点的数据集合
+	[
+		{
+			"type"   : (int)1001,
+			"name"   : (string)"最高温",
+			"value"  : (double)25.8,
+			"point_x": (int) 255,
+			"point_y": (int)404
+			"rectangle_id":(int) 1
+		} 
+	]，
+	picBaseInfo：(Json字符串,详见附录一)
+	file：(string)结果文件名
+   }
+
+//获取解析后的结果图片
+http://150.158.7.244:8080/api/values/GetResultFile         (公网）  GetResultFile
+参数：filename：结果文件名
+返回：文件流
+
+//获取红外图片可见光文件
+http://150.158.7.244:8080/api/values/GetVisualFile         (公网）  GetVisualFile
+参数：filename：结果文件名
+返回：文件流
+
+//获取图片详细信息
+http://150.158.7.244:8080/api/values/GetDetailInfo   (公网）       GetDetailInfo
+参数：filename：结果文件名
+返回：(Json字符串,详见附录一)
+
+
+
+
+附录一
+picBaseInfo：结构体
+{
+        public string Title { set; get; } //图片名
+        public int Width { set; get; } //宽
+        public int Height { set; get; } //高
+        public double Max { set; get; }//全图最高温
+        public double Min { set; get; } //全图最低温
+        public string DateTaken { set; get; } //拍摄日期
+        public string AtmosphericTemperature { set; get; } //大气温度
+        public string Lens { set; get; } //相机镜头信息
+        public string Model { set; get; }  //相机模型信息
+        public string Range_max { set; get; } //测量范围
+        public string Range_min { set; get; } //测量范围
+        public string SerialNumber { set; get; } //相机的序列号
+        public string DistanceUnit { set; get; } //距离单位
+        public double Distance { set; get; } //到被聚焦对象的距离
+        public double Emissivity { set; get; } //红外图像的默认发射率
+        public double RelativeHumidity { set; get; } //相对湿度(0.0 - 1.0)
+        public double ReflectedTemperature { set; get; }  //反射温度
+
+    }
+	
+	
+	
+	
